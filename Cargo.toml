@@ -1,0 +1,29 @@
+[package]
+name = "jira-mcp-for-dev"
+version = "0.1.0"
+edition = "2024"
+description = "An MCP server to read Jira issues, for development use cases."
+categories = ["artificial-intelligence"]
+license = "AGPL-3.0-or-later"
+readme = "README.md"
+repository = "https://github.com/DevelAngel/jira-mcp-for-dev"
+authors = ["Angelos Drossos"]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.5", features = ["derive", "env"] }
+clap-verbosity-flag = { version = "3.0.4", default-features = false, features = [
+  "tracing",
+] }
+derive_more = { version = "2.1.1", features = ["deref", "display"] }
+regex = "1"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+secrecy = "0.10.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23" }
