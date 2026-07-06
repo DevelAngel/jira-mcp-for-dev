@@ -27,17 +27,19 @@ pub struct JiraIssueKey {
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Serialize)]
-pub struct JiraIssueInput {
+struct JiraIssueInput {
     key: JiraIssueKey,
 }
 
-#[derive(Debug, Deserialize, JsonSchema, Serialize)]
+#[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
+#[display("Jira issue: {key}\n{fields}")]
 pub struct JiraIssueOutput {
     key: JiraIssueKey,
     fields: JiraIssueFields,
 }
 
-#[derive(Debug, Deserialize, JsonSchema, Serialize)]
+#[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
+#[display("Summary: {summary}\nDescription:\n{description}")]
 struct JiraIssueFields {
     summary: String,
     description: String,
@@ -85,7 +87,7 @@ impl FromStr for JiraIssueProject {
 }
 
 impl JiraIssueKey {
-    pub fn is_allowed(&self, allowed: &[JiraIssueProject]) -> bool {
+    fn is_allowed(&self, allowed: &[JiraIssueProject]) -> bool {
         allowed.iter().any(|allowed| &self.project == allowed)
     }
 }
@@ -108,6 +110,14 @@ impl JiraClient {
         &self,
         Parameters(JiraIssueInput { key }): Parameters<JiraIssueInput>,
     ) -> RmcpToolResult<Json<JiraIssueOutput>> {
+        let issue = self.fetch_issue_from_jira(&key).await?;
+        Ok(Json(issue))
+    }
+
+    pub async fn fetch_issue_from_jira(
+        &self,
+        key: &JiraIssueKey,
+    ) -> RmcpToolResult<JiraIssueOutput> {
         if !key.is_allowed(&self.allowed_projects) {
             return Err(ErrorData::invalid_params(
                 format!("Jira issue {key} is not allowed"),
@@ -154,7 +164,7 @@ impl JiraClient {
             )
         })?;
         tracing::info!("jira issue fetched: {}", issue.key);
-        Ok(Json(issue))
+        Ok(issue)
     }
 }
 

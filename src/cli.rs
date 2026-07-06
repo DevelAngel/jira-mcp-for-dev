@@ -1,4 +1,4 @@
-use crate::jira::JiraIssueProject;
+use crate::jira::{JiraIssueKey, JiraIssueProject};
 
 use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
@@ -9,11 +9,11 @@ use std::net::SocketAddr;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
-#[command(after_help = "If no subcommand is given, io is used by default.")]
+#[command(after_help = "If no subcommand is given, mcp-io is used by default.")]
 pub(crate) struct Cli {
     // transport mode
     #[command(subcommand)]
-    pub command: Option<Transport>,
+    pub command: Option<Command>,
 
     // jira options
     #[command(flatten)]
@@ -25,11 +25,11 @@ pub(crate) struct Cli {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum Transport {
+pub enum Command {
     /// Runs the MCP server using the stdio transport
-    Io,
+    McpIo,
     /// Runs the MCP server using the Streamable HTTP transport
-    Http {
+    McpHttp {
         /// MCP server address
         #[arg(
             long,
@@ -38,6 +38,11 @@ pub enum Transport {
             default_value = "127.0.0.1:8000"
         )]
         addr: SocketAddr,
+    },
+    /// Downloads a Jira ticket directly, bypassing the MCP server
+    FetchIssue {
+        /// Jira issue key, e.g. PROJ-123
+        key: JiraIssueKey,
     },
 }
 
@@ -69,8 +74,8 @@ pub struct JiraArgs {
     pub api_token: Option<SecretString>,
 }
 
-impl Default for Transport {
+impl Default for Command {
     fn default() -> Self {
-        Self::Io
+        Self::McpIo
     }
 }

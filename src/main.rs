@@ -1,10 +1,10 @@
 mod cli;
 mod jira;
 
-use crate::cli::{Cli, Transport};
-use crate::jira::JiraClient;
+use crate::cli::{Cli, Command};
+use crate::jira::{JiraClient, JiraIssueKey};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 
 // io transport
@@ -42,21 +42,22 @@ async fn main() -> Result<()> {
     };
 
     match cli.command.unwrap_or_default() {
-        Transport::Io => run_io_server(client).await,
-        Transport::Http { addr } => run_http_server(client, addr).await,
+        Command::McpIo => run_mcp_io_server(client).await,
+        Command::McpHttp { addr } => run_mcp_http_server(client, addr).await,
+        Command::FetchIssue { key } => fetch_issue(client, key).await,
     }?;
 
     Ok(())
 }
 
-async fn run_io_server(client: JiraClient) -> Result<()> {
+async fn run_mcp_io_server(client: JiraClient) -> Result<()> {
     tracing::info!("Start stdio server");
     let service = client.serve(transport::stdio()).await?;
     service.waiting().await?;
     Ok(())
 }
 
-async fn run_http_server(client: JiraClient, addr: SocketAddr) -> Result<()> {
+async fn run_mcp_http_server(client: JiraClient, addr: SocketAddr) -> Result<()> {
     tracing::info!("Start streamable http server: {}", addr);
     let ct = CancellationToken::new();
 
@@ -74,5 +75,14 @@ async fn run_http_server(client: JiraClient, addr: SocketAddr) -> Result<()> {
             ct.cancel();
         })
         .await;
+    Ok(())
+}
+
+async fn fetch_issue(client: JiraClient, key: JiraIssueKey) -> Result<()> {
+    let issue = client
+        .fetch_issue_from_jira(&key)
+        .await
+        .with_context(|| format!("failed to fetch Jira issue {}", key))?;
+    println!("{issue}");
     Ok(())
 }
