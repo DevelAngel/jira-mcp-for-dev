@@ -10,16 +10,12 @@ Build it with the following command:
 $ cargo build --locked
 ```
 
-## Version 0.4.0 -- MCP IO & Streamable HTTP Server
-
-// TODO
-
-## Version 0.3.0 -- MCP Streamable HTTP Server
+## MCP Streamable HTTP Server
 
 ### Terminaal 1: Start HTTP Server
 
 ```console
-$ ./target/debug/jira-mcp-for-dev --base-url https://jira.atlassian.com --allowed-prefix CLOUD -vv
+$ jira-mcp-for-dev mcp-http --base-url https://jira.atlassian.com --allowed-project CLOUD -vv
 2026-07-06T01:27:24.559305Z  WARN jira_mcp_for_dev::jira: no API token configured
 2026-07-06T01:27:24.607318Z  INFO jira_mcp_for_dev: Start streamable http server: 127.0.0.1:8000
 2026-07-06T01:32:09.467448Z  INFO rmcp::transport::streamable_http_server::session::local: create new session session_id="dc2b2842-fcfa-49e8-bf5a-24273b2bf7e1"
@@ -110,7 +106,7 @@ If you have access to a ticket in an allowed project (e.g., `CLOUD-XXXXX`), I'd 
   ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ 0% 2k/1.0M
 ```
 
-## Version 0.2.0 -- MCP IO Server
+## MCP IO Server
 
 ### Example Usage in Goose AI
 
@@ -129,7 +125,7 @@ $ goose configure
 │  jira-mcp-for-dev
 │
 ◇  What command should be run?
-│  jira-mcp-for-dev --base-url https://jira.atlassian.com --allowed-prefix CLOUD
+│  jira-mcp-for-dev mcp-io --base-url https://jira.atlassian.com --allowed-project CLOUD
 │
 ◇  Please set the timeout for this tool (in secs):
 │  300
@@ -182,12 +178,14 @@ It looks like access to **PROJ-123** isn't permitted — the Jira MCP server ret
   ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ 0% 2k/1.0M
 ```
 
-## Version 0.1.1 -- CLI
+## Fetch Jira Issue Directly
+
+Bypass the MCP server.
 
 ### Example Usage
 
 ```console
-$ ./target/debug/jira-mcp-for-dev --base-url https://jira.atlassian.com --allowed-prefix CLOUD CLOUD-12377
+$ jira-mcp-for-dev fetch-issue --base-url https://jira.atlassian.com --allowed-project CLOUD CLOUD-12377
 jira issue: CLOUD-12377
 summary: Allow non-Enterprise organization admins to use ...
 description:
@@ -196,16 +194,32 @@ We’d like to request that the *User Count* feature be made available for ...
 
 (Summary and description was shorten.)
 
-### Not in Allow List (wrong prefix)
+### Not in Allow List (wrong project #1)
 
 ```console
-$ ./target/debug/jira-mcp-for-dev --base-url https://jira.atlassian.com --allowed-prefix PROJ CLOUD-12377
-Error: CLOUD-12377 not allowed
+$ jira-mcp-for-dev fetch-issue --base-url https://jira.atlassian.com --allowed-project PROJ CLOUD-12377
+Error: failed to fetch Jira issue CLOUD-12377
+
+Caused by:
+    -32602: Jira issue CLOUD-12377 is not allowed
+```
+
+### Not in Allow List (wrong project #2)
+
+```console
+$ jira-mcp-for-dev fetch-issue --base-url https://jira.atlassian.com --allowed-project CLO CLOUD-12377
+Error: failed to fetch Jira issue CLOUD-12377
+
+Caused by:
+    -32602: Jira issue CLOUD-12377 is not allowed
 ```
 
 ### Not in Allow List (empty list)
 
 ```console
-./target/debug/jira-mcp-for-dev --base-url https://jira.atlassian.com CLOUD-12377
-Error: CLOUD-12377 not allowed
+$ jira-mcp-for-dev fetch-issue --base-url https://jira.atlassian.com CLOUD-12377
+Error: failed to fetch Jira issue CLOUD-12377
+
+Caused by:
+    -32602: Jira issue CLOUD-12377 is not allowed
 ```
