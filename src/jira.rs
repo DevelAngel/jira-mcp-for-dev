@@ -10,6 +10,10 @@ use std::str::FromStr;
 #[serde(transparent)]
 pub struct JiraIssueKey(String);
 
+#[derive(Debug, Clone, Deref, Deserialize, Display)]
+#[serde(transparent)]
+pub struct JiraIssueKeyPrefix(String);
+
 #[derive(Debug)]
 pub struct JiraClient {
     base_url: Url,
@@ -44,6 +48,24 @@ impl FromStr for JiraIssueKey {
         } else {
             Err(anyhow!("expected format like PROJ-123"))
         }
+    }
+}
+
+impl FromStr for JiraIssueKeyPrefix {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let re = Regex::new(r"^[A-Z][A-Z0-9]+$")?;
+        if re.is_match(s) {
+            Ok(Self(s.to_string()))
+        } else {
+            Err(anyhow!("expected format like PROJ-123"))
+        }
+    }
+}
+
+impl JiraIssueKey {
+    pub fn is_allowed(&self, allowed: &[JiraIssueKeyPrefix]) -> bool {
+        allowed.iter().any(|prefix| self.starts_with(prefix.as_str()))
     }
 }
 

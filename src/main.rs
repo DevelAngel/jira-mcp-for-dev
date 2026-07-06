@@ -4,7 +4,7 @@ mod jira;
 use crate::cli::Cli;
 use crate::jira::JiraClient;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 
 #[tokio::main]
@@ -15,6 +15,9 @@ async fn main() -> Result<()> {
         .init();
 
     tracing::info!("fetch jira issue: {}", args.key);
+    if !args.key.is_allowed(&args.allowed_key_prefixes) {
+        return Err(anyhow!("{} not allowed", args.key))
+    }
 
     let client = if let Some(api_token) = args.api_token {
         JiraClient::builder()

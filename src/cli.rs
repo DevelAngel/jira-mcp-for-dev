@@ -1,4 +1,4 @@
-use crate::jira::JiraIssueKey;
+use crate::jira::{JiraIssueKey, JiraIssueKeyPrefix};
 
 use clap::Parser;
 use clap_verbosity_flag::Verbosity;
@@ -13,6 +13,15 @@ pub(crate) struct Cli {
     pub verbosity: Verbosity,
     /// Jira issue key, e.g. PROJ-123
     pub key: JiraIssueKey,
+    /// Allowed Jira issue key prefixes, e.g. PROJ.
+    /// Can be repeated or comma-separated.
+    #[arg(
+        long = "allowed-prefix",
+        env = "JIRA_ALLOWED_KEY_PREFIXES",
+        value_name = "KEY_PREFIX",
+        value_delimiter = ','
+    )]
+    pub allowed_key_prefixes: Vec<JiraIssueKeyPrefix>,
     /// Jira Base URL, e.g. https://jira.example.com
     #[arg(long, env = "JIRA_BASE_URL")]
     pub base_url: Url,
