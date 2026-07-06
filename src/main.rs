@@ -6,8 +6,16 @@ use crate::jira::JiraClient;
 
 use anyhow::Result;
 use clap::Parser;
-use rmcp::transport;
-use rmcp::ServiceExt;
+
+// streamable HTTP
+use axum::Router;
+use rmcp::transport::streamable_http_server::{
+    StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
+};
+use std::net::SocketAddr;
+use tokio::net::TcpListener;
+use tokio::signal;
+use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -29,12 +37,27 @@ async fn main() -> Result<()> {
             .build()
     };
         
-    serve_io(client).await?;
+    tracing::info!("Start streamable http server: {}", args.addr);
+    serve_streamhttp(client, args.addr).await?;
     Ok(())
 }
 
-async fn serve_io(client: JiraClient) -> Result<()> {
-    let service = client.serve(transport::stdio()).await?;
-    service.waiting().await?;
+async fn serve_streamhttp(client: JiraClient, addr: SocketAddr) -> Result<()> {
+    let ct = CancellationToken::new();
+
+    let service = StreamableHttpService::new(
+        move || Ok(client.clone()),
+        LocalSessionManager::default().into(),
+        StreamableHttpServerConfig::default().with_cancellation_token(ct.child_token()),
+    );
+
+    let router = Router::new().nest_service("/mcp", service);
+    let tcp_listener = TcpListener::bind(addr).await?;
+    let _ = axum::serve(tcp_listener, router)
+        .with_graceful_shutdown(async move {
+            signal::ctrl_c().await.unwrap();
+            ct.cancel();
+        })
+        .await;
     Ok(())
 }

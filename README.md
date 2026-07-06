@@ -2,13 +2,111 @@
 
 An MCP server to read Jira issues, for development use cases.
 
-## Version 0.2.0 -- MCP IO Server
+## Build
 
 Build it with the following command:
 
 ```console
 $ cargo build --locked
 ```
+
+## Version 0.3.0 -- MCP Streamable HTTP Server
+
+### Terminaal 1: Start HTTP Server
+
+```console
+$ ./target/debug/jira-mcp-for-dev --base-url https://jira.atlassian.com --allowed-prefix CLOUD -vv
+2026-07-06T01:27:24.559305Z  WARN jira_mcp_for_dev::jira: no API token configured
+2026-07-06T01:27:24.607318Z  INFO jira_mcp_for_dev: Start streamable http server: 127.0.0.1:8000
+2026-07-06T01:32:09.467448Z  INFO rmcp::transport::streamable_http_server::session::local: create new session session_id="dc2b2842-fcfa-49e8-bf5a-24273b2bf7e1"
+2026-07-06T01:32:09.467752Z  INFO serve_inner: rmcp::service: Service initialized as server peer_info=Some(InitializeRequestParams { meta: None, protocol_version: ProtocolVersion("2025-03-26"), capabilities: ClientCapabilities { experimental: None, extensions: Some({}), roots: Some(RootsCapabilities { list_changed: None }), sampling: Some(SamplingCapability { tools: None, context: None }), elicitation: Some(ElicitationCapability { form: None, url: None }), tasks: None }, client_info: Implementation { name: "goose-cli", title: None, version: "1.41.0", description: None, icons: None, website_url: None } })
+2026-07-06T01:32:09.468679Z  INFO serve_inner: rmcp::service: received notification notification=InitializedNotification(NotificationNoParam { method: InitializedNotificationMethod, extensions: Extensions })
+2026-07-06T01:32:09.468716Z  INFO serve_inner: rmcp::handler::server: client initialized
+2026-07-06T01:33:19.533230Z  INFO serve_inner: jira_mcp_for_dev::jira: jira issue fetched: CLOUD-12377
+2026-07-06T01:33:39.812158Z  WARN serve_inner: rmcp::service: response error id=4 error=ErrorData { code: ErrorCode(-32602), message: "Jira issue PROJ-123 is not allowed", data: None }
+```
+
+### Terminaal 2: Goose AI
+
+```console
+$ goose configure
+
+┌   goose-configure
+│
+◇  What would you like to configure?
+│  Add Extension
+│
+◇  What type of extension would you like to add?
+│  Remote Extension (Streamable HTTP)
+│
+◇  What would you like to call this extension?
+│  jira-mcp-for-dev
+│
+◇  What is the Streaming HTTP endpoint URI?
+│  http://localhost:8000/mcp
+│
+◇  Please set the timeout for this tool (in secs):
+│  300
+│
+◇  Enter a description for this extension:
+│  Fetch Jira issues
+│
+◇  Would you like to add custom headers?
+│  No
+│
+└  Added jira-mcp-for-dev extension
+```
+
+```console
+$ goose
+
+    __( O)>  ● new session · anthropic claude-sonnet-5
+   \____)    20260706_7 · /home/develangel/workspace3/rust/jira-mcp-for-dev
+     L L     goose is ready
+  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ 0% 0/1.0M
+> What MCP servers are configured?
+
+Based on my current active extensions, I only have access to one MCP server:
+
+## Configured MCP Server
+
+- **jira-mcp-for-dev** — provides a tool to fetch Jira issue summaries and descriptions (`fetch_jira_issue`)
+
+This is the only extension currently active in my session. I don't have direct visibility into your broader MCP configuration file (e.g., `~/.config/goose/config.yaml` or similar) beyond what's been loaded as active extensions for this conversation.
+
+If you'd like, I can:
+1. Look at your working directory (`/home/develangel/workspace3/rust/jira-mcp-for-dev`) — though I'd need shell/file access tools enabled to do that, which I currently don't have.
+2. You could share your Goose config file contents directly and I can help interpret them.
+
+Would you like me to enable additional extensions (like a developer/shell tool) to inspect the actual config file?
+  ⏱ 6.29s
+  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ 0% 1k/1.0M
+> What do you know about the Jira Ticket CLOUD-12377 -- in one sentence?
+
+
+  ────────────────────────────────────────
+  ▸ fetch_jira_issue jira-mcp-for-dev
+    key: CLOUD-12377
+
+CLOUD-12377 is a feature request to extend the "User Count" monitoring capability in the Admin Hub—currently limited to Enterprise customers—to also be available for organizations on the Standard and Premium plans.
+  ⏱ 4.99s
+  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ 0% 2k/1.0M
+> What about Jira PROJ-123?
+
+
+  ────────────────────────────────────────
+  ▸ fetch_jira_issue jira-mcp-for-dev
+    key: PROJ-123
+
+    -32602: Jira issue PROJ-123 is not allowed
+It looks like I'm not able to access **PROJ-123** — the server returned an error indicating that this issue is **not allowed** (likely restricted by project-level permissions or an allow-list configured for this Jira MCP server, which may only permit access to specific projects like `CLOUD`).
+
+If you have access to a ticket in an allowed project (e.g., `CLOUD-XXXXX`), I'd be happy to look that up instead.
+  ⏱ 5.33s
+  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ 0% 2k/1.0M
+```
+
+## Version 0.2.0 -- MCP IO Server
 
 ### Example Usage in Goose AI
 

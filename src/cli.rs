@@ -5,6 +5,8 @@ use clap_verbosity_flag::Verbosity;
 use reqwest::Url;
 use secrecy::SecretString;
 
+use std::net::SocketAddr;
+
 #[derive(Debug, Parser)]
 #[command(version, about = "Fetch summary and description for a Jira issue")]
 pub(crate) struct Cli {
@@ -26,4 +28,7 @@ pub(crate) struct Cli {
     /// Jira API token
     #[arg(long, env = "JIRA_API_TOKEN")]
     pub api_token: Option<SecretString>,
+    /// MCP server address
+    #[arg(long, env = "JIRA_MCP_ADDRESS", default_value = "127.0.0.1:8000")]
+    pub addr: SocketAddr,
 }
