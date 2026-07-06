@@ -1,4 +1,4 @@
-use crate::jira::{JiraIssueKey, JiraIssueKeyPrefix};
+use crate::jira::JiraIssueKeyPrefix;
 
 use clap::Parser;
 use clap_verbosity_flag::Verbosity;
@@ -6,13 +6,11 @@ use reqwest::Url;
 use secrecy::SecretString;
 
 #[derive(Debug, Parser)]
-#[command(about = "Fetch summary and description for a Jira issue")]
+#[command(version, about = "Fetch summary and description for a Jira issue")]
 pub(crate) struct Cli {
     // verbose and quiet flag handling
     #[command(flatten)]
     pub verbosity: Verbosity,
-    /// Jira issue key, e.g. PROJ-123
-    pub key: JiraIssueKey,
     /// Allowed Jira issue key prefixes, e.g. PROJ.
     /// Can be repeated or comma-separated.
     #[arg(
