@@ -9,7 +9,7 @@ use rmcp::schemars;
 use rmcp::{tool, tool_router};
 use schemars::JsonSchema;
 use secrecy::{ExposeSecret, SecretString};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 use std::str::FromStr;
 
@@ -19,7 +19,7 @@ type RmcpToolResult<T> = std::result::Result<T, ErrorData>;
 #[serde(transparent)]
 pub struct JiraIssueProject(String);
 
-#[derive(Debug, Clone, Deserialize, Display, JsonSchema, Serialize)]
+#[derive(Debug, Clone, Display, JsonSchema)]
 #[display("{project}-{id}")]
 pub struct JiraIssueKey {
     project: JiraIssueProject,
@@ -210,5 +210,21 @@ impl JiraClientBuilder {
             api_token: self.api_token,
             allowed_projects: self.allowed_projects,
         }
+    }
+}
+
+impl Serialize for JiraIssueKey {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        // convert into string before serialization
+        let v = self.to_string();
+        v.serialize(s)
+    }
+}
+
+impl<'de> Deserialize<'de> for JiraIssueKey {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        // deserliaze into string and then parse it
+        let s = String::deserialize(d)?;
+        s.parse().map_err(serde::de::Error::custom)
     }
 }
