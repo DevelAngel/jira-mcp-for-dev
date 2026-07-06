@@ -31,13 +31,13 @@ async fn main() -> Result<()> {
     let client = if let Some(api_token) = cli.jira.api_token {
         JiraClient::builder()
             .with_base_url(cli.jira.base_url)
-            .with_allowed_key_prefixes(cli.jira.allowed_key_prefixes)
+            .with_allowed_projects(cli.jira.allowed_projects)
             .with_api_token(api_token)
             .build()
     } else {
         JiraClient::builder()
             .with_base_url(cli.jira.base_url)
-            .with_allowed_key_prefixes(cli.jira.allowed_key_prefixes)
+            .with_allowed_projects(cli.jira.allowed_projects)
             .build()
     };
 

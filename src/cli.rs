@@ -1,4 +1,4 @@
-use crate::jira::JiraIssueKeyPrefix;
+use crate::jira::JiraIssueProject;
 
 use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
@@ -43,16 +43,16 @@ pub enum Transport {
 
 #[derive(Args, Clone, Debug)]
 pub struct JiraArgs {
-    /// Allowed Jira issue key prefixes, e.g. PROJ.
+    /// Allowed Jira issue projects, e.g. PROJ.
     /// Can be repeated or comma-separated.
     #[arg(
         global = true,
-        long = "allowed-prefix",
-        env = "JIRA_ALLOWED_KEY_PREFIXES",
+        long = "allowed-project",
+        env = "JIRA_ALLOWED_PROJECTS",
         value_name = "KEY_PREFIX",
         value_delimiter = ','
     )]
-    pub allowed_key_prefixes: Vec<JiraIssueKeyPrefix>,
+    pub allowed_projects: Vec<JiraIssueProject>,
 
     /// Jira Base URL
     #[arg(
