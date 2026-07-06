@@ -1,6 +1,6 @@
 [package]
 name = "jira-mcp-for-dev"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 description = "An MCP server to read Jira issues, for development use cases."
 categories = ["artificial-intelligence"]
@@ -24,6 +24,7 @@ regex = "1"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 rmcp = { version = "2.1.0", features = [
   "server",
+  "transport-io",
   "transport-streamable-http-server",
 ] }
 secrecy = "0.10.3"

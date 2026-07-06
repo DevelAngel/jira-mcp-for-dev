@@ -1,13 +1,17 @@
 mod cli;
 mod jira;
 
-use crate::cli::Cli;
+use crate::cli::{Cli, Transport};
 use crate::jira::JiraClient;
 
 use anyhow::Result;
 use clap::Parser;
 
-// streamable HTTP
+// io transport
+use rmcp::ServiceExt;
+use rmcp::transport;
+
+// streamable HTTP transport
 use axum::Router;
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
@@ -19,30 +23,41 @@ use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = Cli::parse();
+    let cli = Cli::parse();
     tracing_subscriber::fmt()
-        .with_max_level(args.verbosity)
+        .with_max_level(cli.verbosity)
         .init();
 
-    let client = if let Some(api_token) = args.api_token {
+    let client = if let Some(api_token) = cli.jira.api_token {
         JiraClient::builder()
-            .with_base_url(args.base_url)
-            .with_allowed_key_prefixes(args.allowed_key_prefixes)
+            .with_base_url(cli.jira.base_url)
+            .with_allowed_key_prefixes(cli.jira.allowed_key_prefixes)
             .with_api_token(api_token)
             .build()
     } else {
         JiraClient::builder()
-            .with_base_url(args.base_url)
-            .with_allowed_key_prefixes(args.allowed_key_prefixes)
+            .with_base_url(cli.jira.base_url)
+            .with_allowed_key_prefixes(cli.jira.allowed_key_prefixes)
             .build()
     };
-        
-    tracing::info!("Start streamable http server: {}", args.addr);
-    serve_streamhttp(client, args.addr).await?;
+
+    match cli.command.unwrap_or_default() {
+        Transport::Io => run_io_server(client).await,
+        Transport::Http { addr } => run_http_server(client, addr).await,
+    }?;
+
     Ok(())
 }
 
-async fn serve_streamhttp(client: JiraClient, addr: SocketAddr) -> Result<()> {
+async fn run_io_server(client: JiraClient) -> Result<()> {
+    tracing::info!("Start stdio server");
+    let service = client.serve(transport::stdio()).await?;
+    service.waiting().await?;
+    Ok(())
+}
+
+async fn run_http_server(client: JiraClient, addr: SocketAddr) -> Result<()> {
+    tracing::info!("Start streamable http server: {}", addr);
     let ct = CancellationToken::new();
 
     let service = StreamableHttpService::new(

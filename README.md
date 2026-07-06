@@ -10,6 +10,10 @@ Build it with the following command:
 $ cargo build --locked
 ```
 
+## Version 0.4.0 -- MCP IO & Streamable HTTP Server
+
+// TODO
+
 ## Version 0.3.0 -- MCP Streamable HTTP Server
 
 ### Terminaal 1: Start HTTP Server
