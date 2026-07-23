@@ -35,12 +35,14 @@ async fn main() -> Result<()> {
         JiraClient::builder()
             .with_base_url(cli.jira.base_url)
             .with_allowed_projects(cli.jira.allowed_projects)
+            .with_story_points_field(cli.jira.story_points_field)
             .with_api_token(api_token)
             .build()
     } else {
         JiraClient::builder()
             .with_base_url(cli.jira.base_url)
             .with_allowed_projects(cli.jira.allowed_projects)
+            .with_story_points_field(cli.jira.story_points_field)
             .build()
     };
 
@@ -50,7 +52,10 @@ async fn main() -> Result<()> {
             addr,
             allowed_origins,
         } => run_mcp_http_server(client, addr, &allowed_origins).await,
-        Command::FetchIssue { key } => fetch_issue(client, key).await,
+        Command::FetchIssue {
+            key,
+            include_story_points,
+        } => fetch_issue(client, key, include_story_points).await,
     }?;
 
     Ok(())
@@ -108,9 +113,13 @@ async fn run_mcp_http_server(
     Ok(())
 }
 
-async fn fetch_issue(client: JiraClient, key: JiraIssueKey) -> Result<()> {
+async fn fetch_issue(
+    client: JiraClient,
+    key: JiraIssueKey,
+    include_story_points: bool,
+) -> Result<()> {
     let issue = client
-        .fetch_issue_from_jira(&key)
+        .fetch_issue_from_jira(&key, include_story_points)
         .await
         .with_context(|| format!("failed to fetch Jira issue {}", key))?;
     println!("{issue}");

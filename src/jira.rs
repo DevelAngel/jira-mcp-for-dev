@@ -31,6 +31,11 @@ pub struct JiraIssueKey {
 #[derive(Debug, Deserialize, JsonSchema, Serialize)]
 struct JiraIssueInput {
     key: JiraIssueKey,
+    /// Whether to also fetch the optional Story Points value.
+    /// Defaults to false, since it lives in an instance-specific custom
+    /// field and is not always needed.
+    #[serde(default)]
+    include_story_points: bool,
 }
 
 #[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
@@ -41,11 +46,48 @@ pub struct JiraIssueOutput {
 }
 
 #[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
-#[display("Summary: {summary}\nDescription:\n{description}")]
+#[display(
+    "{summary}\n{components}\n{story_points}{description}\n",
+    story_points = if let Some(sp) = &self.story_points { format!("{sp}\n") } else { "".to_owned() }
+)]
 struct JiraIssueFields {
-    summary: String,
-    description: String,
+    /// Summary of Jira issue.
+    summary: JiraSummary,
+    /// Description of Jira issue.
+    description: JiraDescription,
+    /// Components affected of Jira issue.
+    #[serde(default)]
+    components: JiraComponentList,
+    /// Optional Story Points value, read from a configurable custom field.
+    #[serde(default, skip_deserializing)]
+    story_points: Option<JiraStoryPoints>,
 }
+
+#[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
+#[serde(transparent)]
+#[display("Summary: {}", self.0)]
+struct JiraSummary(String);
+
+#[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
+#[serde(transparent)]
+#[display("Description:\n{}", self.0)]
+struct JiraDescription(String);
+
+#[derive(Debug, Default, Deserialize, Display, JsonSchema, Serialize)]
+#[serde(transparent)]
+#[display("Components: {}", Self::format(&self.0))]
+struct JiraComponentList(Vec<JiraComponent>);
+
+#[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
+#[display("{name}")]
+struct JiraComponent {
+    name: String,
+}
+
+#[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
+#[serde(transparent)]
+#[display("Story Points: {}", self.0)]
+struct JiraStoryPoints(f64);
 
 #[derive(Clone, Debug)]
 pub struct JiraClient {
@@ -53,6 +95,7 @@ pub struct JiraClient {
     base_url: Url,
     api_token: Option<SecretString>,
     allowed_projects: Vec<JiraIssueProject>,
+    story_points_field: String,
 }
 
 #[derive(Debug)]
@@ -60,6 +103,7 @@ pub struct JiraClientBuilder {
     base_url: Url,
     api_token: Option<SecretString>,
     allowed_projects: Vec<JiraIssueProject>,
+    story_points_field: Option<String>,
 }
 
 impl From<JiraIssueKey> for String {
@@ -117,21 +161,27 @@ impl JiraClient {
 impl JiraClient {
     #[tool(
         name = "fetch_jira_issue",
-        description = "Fetch summary and description of a jira issue",
+        description = "Fetch summary, description, and components of a jira issue. Set include_story_points=true to also fetch the Story Points value",
         annotations(read_only_hint = true),
         execution(task_support = "optional")
     )]
     async fn fetch_issue(
         &self,
-        Parameters(JiraIssueInput { key }): Parameters<JiraIssueInput>,
+        Parameters(JiraIssueInput {
+            key,
+            include_story_points,
+        }): Parameters<JiraIssueInput>,
     ) -> RmcpToolResult<Json<JiraIssueOutput>> {
-        let issue = self.fetch_issue_from_jira(&key).await?;
+        let issue = self
+            .fetch_issue_from_jira(&key, include_story_points)
+            .await?;
         Ok(Json(issue))
     }
 
     pub async fn fetch_issue_from_jira(
         &self,
         key: &JiraIssueKey,
+        include_story_points: bool,
     ) -> RmcpToolResult<JiraIssueOutput> {
         if !key.is_allowed(&self.allowed_projects) {
             return Err(ErrorData::invalid_params(
@@ -151,8 +201,13 @@ impl JiraClient {
                     Some(json!(e.to_string())),
                 )
             })?;
+        let mut fields_param = "summary,description,components".to_string();
+        if include_story_points {
+            fields_param.push(',');
+            fields_param.push_str(&self.story_points_field);
+        }
         url.query_pairs_mut()
-            .append_pair("fields", "summary,description");
+            .append_pair("fields", &fields_param);
 
         let mut request = self.http.get(url).header("Accept", "application/json");
 
@@ -172,12 +227,30 @@ impl JiraClient {
             ));
         }
 
-        let issue = response.json::<JiraIssueOutput>().await.map_err(|e| {
+        let body = response.json::<serde_json::Value>().await.map_err(|e| {
+            ErrorData::internal_error(
+                "failed to read Jira issue response",
+                Some(json!(e.to_string())),
+            )
+        })?;
+        tracing::debug!("Body:\n{body:?}");
+
+        let story_points = include_story_points
+            .then(|| {
+                body.get("fields")
+                    .and_then(|fields| fields.get(&self.story_points_field))
+                    .and_then(|value| value.as_f64())
+            })
+            .flatten();
+
+        let mut issue: JiraIssueOutput = serde_json::from_value(body).map_err(|e| {
             ErrorData::internal_error(
                 "failed to deserialize Jira issue response",
                 Some(json!(e.to_string())),
             )
         })?;
+        issue.fields.story_points = story_points.map(|v| JiraStoryPoints(v));
+
         tracing::info!("jira issue fetched: {}", issue.key);
         Ok(issue)
     }
@@ -190,6 +263,7 @@ impl Default for JiraClientBuilder {
             base_url,
             api_token: None,
             allowed_projects: Vec::new(),
+            story_points_field: None,
         }
     }
 }
@@ -213,6 +287,11 @@ impl JiraClientBuilder {
         self
     }
 
+    pub fn with_story_points_field(mut self, story_points_field: impl Into<String>) -> Self {
+        self.story_points_field = Some(story_points_field.into());
+        self
+    }
+
     pub fn build(self) -> JiraClient {
         if self.api_token.is_none() {
             tracing::warn!("no API token configured");
@@ -224,6 +303,21 @@ impl JiraClientBuilder {
             base_url: self.base_url,
             api_token: self.api_token,
             allowed_projects: self.allowed_projects,
+            story_points_field: self.story_points_field.expect("no story points field configured"),
+        }
+    }
+}
+
+impl JiraComponentList {
+    fn format(components: &[JiraComponent]) -> String {
+        if components.is_empty() {
+            "none".to_string()
+        } else {
+            components
+                .iter()
+                .map(|c| c.name.as_str().trim_end())
+                .collect::<Vec<_>>()
+                .join(", ")
         }
     }
 }

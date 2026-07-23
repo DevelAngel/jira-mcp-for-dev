@@ -52,6 +52,9 @@ pub enum Command {
     FetchIssue {
         /// Jira issue key, e.g. PROJ-123
         key: JiraIssueKey,
+        /// Also fetch the optional Story Points value
+        #[arg(long)]
+        include_story_points: bool,
     },
 }
 
@@ -84,6 +87,18 @@ pub struct JiraArgs {
     /// Jira API token
     #[arg(global = true, long, env = "JIRA_API_TOKEN", value_name = "TOKEN")]
     pub api_token: Option<SecretString>,
+
+    /// Custom field ID used for the optional Story Points value.
+    ///
+    /// Story Points is not a standard Jira field; its ID varies per instance.
+    #[arg(
+        global = true,
+        long = "story-points-field",
+        env = "JIRA_STORY_POINTS_FIELD",
+        value_name = "FIELD_ID",
+        default_value = "customfield_10106"
+    )]
+    pub story_points_field: String,
 }
 
 impl Default for Command {
