@@ -135,6 +135,20 @@ pub struct JiraArgs {
         default_value = "Sub-task"
     )]
     pub subtask_issuetype: String,
+
+    /// Parent issue type names that must never receive subtasks, e.g.
+    /// "Epic", "Initiative".
+    ///
+    /// Varies per Jira instance/locale. Matched case-insensitively.
+    #[arg(
+        global = true,
+        long = "non-subtaskable-issuetype",
+        env = "JIRA_NON_SUBTASKABLE_ISSUETYPES",
+        value_name = "ISSUETYPE_NAME",
+        value_delimiter = ',',
+        default_value = "Epic,Initiative"
+    )]
+    pub non_subtaskable_issuetypes: Vec<String>,
 }
 
 impl Default for Command {

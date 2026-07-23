@@ -37,6 +37,7 @@ async fn main() -> Result<()> {
             .with_allowed_projects(cli.jira.allowed_projects)
             .with_story_points_field(cli.jira.story_points_field)
             .with_subtask_issuetype(cli.jira.subtask_issuetype)
+            .with_non_subtaskable_issuetypes(cli.jira.non_subtaskable_issuetypes)
             .with_api_token(api_token)
             .build()
     } else {
@@ -45,6 +46,7 @@ async fn main() -> Result<()> {
             .with_allowed_projects(cli.jira.allowed_projects)
             .with_story_points_field(cli.jira.story_points_field)
             .with_subtask_issuetype(cli.jira.subtask_issuetype)
+            .with_non_subtaskable_issuetypes(cli.jira.non_subtaskable_issuetypes)
             .build()
     };
 

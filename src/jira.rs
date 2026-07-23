@@ -173,6 +173,7 @@ pub struct JiraClient {
     allowed_projects: Vec<JiraIssueProject>,
     story_points_field: String,
     subtask_issuetype: String,
+    non_subtaskable_issuetypes: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -182,6 +183,7 @@ pub struct JiraClientBuilder {
     allowed_projects: Vec<JiraIssueProject>,
     story_points_field: Option<String>,
     subtask_issuetype: Option<String>,
+    non_subtaskable_issuetypes: Vec<String>,
 }
 
 impl From<JiraIssueKey> for String {
@@ -436,6 +438,20 @@ impl JiraClient {
             ));
         }
 
+        if self
+            .non_subtaskable_issuetypes
+            .iter()
+            .any(|denied| denied.eq_ignore_ascii_case(&parent_fields.fields.issuetype.name))
+        {
+            return Err(ErrorData::invalid_params(
+                format!(
+                    "Jira issue {parent} is a {}; this issue type must not receive subtasks",
+                    parent_fields.fields.issuetype.name
+                ),
+                None,
+            ));
+        }
+
         tracing::debug!("create jira subtask under: {parent}");
         let url = self.base_url.join("rest/api/2/issue").map_err(|e| {
             ErrorData::internal_error(
@@ -537,6 +553,7 @@ impl Default for JiraClientBuilder {
             allowed_projects: Vec::new(),
             story_points_field: None,
             subtask_issuetype: None,
+            non_subtaskable_issuetypes: Vec::new(),
         }
     }
 }
@@ -570,9 +587,24 @@ impl JiraClientBuilder {
         self
     }
 
+    pub fn with_non_subtaskable_issuetypes(
+        mut self,
+        non_subtaskable_issuetypes: impl Into<Vec<String>>,
+    ) -> Self {
+        self.non_subtaskable_issuetypes = non_subtaskable_issuetypes.into();
+        self
+    }
+
     pub fn build(self) -> JiraClient {
         if self.api_token.is_none() {
             tracing::warn!("no API token configured");
+        }
+        if self.non_subtaskable_issuetypes.is_empty() {
+            tracing::warn!(
+                "no non-subtaskable issuetypes configured; \
+                subtasks can be created under any parent issuetype, \
+                including Epics and Initiatives"
+            );
         }
 
         let http = Client::new();
@@ -583,6 +615,7 @@ impl JiraClientBuilder {
             allowed_projects: self.allowed_projects,
             story_points_field: self.story_points_field.expect("no story points field configured"),
             subtask_issuetype: self.subtask_issuetype.expect("no subtask issuetype configured"),
+            non_subtaskable_issuetypes: self.non_subtaskable_issuetypes,
         }
     }
 }
