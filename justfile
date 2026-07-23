@@ -1,3 +1,6 @@
+arch := "aarch64"
+libc := "musl"
+
 # --- linting ---
 
 # Full workspace build check (catches cross-crate issues)
@@ -23,3 +26,8 @@ debug-native:
 [group('build-release')]
 release-native:
     cargo build --release --locked
+
+[group('build-release')]
+release-cross:
+    cross build --target {{arch}}-unknown-linux-{{libc}} --release --locked
+
