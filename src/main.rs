@@ -20,6 +20,8 @@ use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
+use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -67,7 +69,10 @@ async fn run_mcp_http_server(client: JiraClient, addr: SocketAddr) -> Result<()>
         StreamableHttpServerConfig::default().with_cancellation_token(ct.child_token()),
     );
 
-    let router = Router::new().nest_service("/mcp", service);
+    let router = Router::new()
+        .nest_service("/mcp", service)
+        .layer(CorsLayer::permissive())
+        .layer(TraceLayer::new_for_http());
     let tcp_listener = TcpListener::bind(addr).await?;
     let _ = axum::serve(tcp_listener, router)
         .with_graceful_shutdown(async move {
