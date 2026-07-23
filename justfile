@@ -1,3 +1,4 @@
+xdg_bin_home := env('XDG_BIN_HOME', env('HOME') + "/.local/bin")
 arch := "aarch64"
 libc := "musl"
 
@@ -31,3 +32,10 @@ release-native:
 release-cross:
     cross build --target {{arch}}-unknown-linux-{{libc}} --release --locked
 
+# --- deployment ---
+
+[group('deployment')]
+deploy-bin: release-native
+    systemctl --user stop jira-mcp-for-dev.service
+    cp -a "./target/release/jira-mcp-for-dev" "{{xdg_bin_home}}/"
+    systemctl --user start jira-mcp-for-dev.service
