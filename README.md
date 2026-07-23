@@ -12,7 +12,7 @@ $ cargo build --locked
 
 ## MCP Streamable HTTP Server
 
-### Terminaal 1: Start HTTP Server
+### Terminal 1: Start HTTP Server
 
 ```console
 $ jira-mcp-for-dev mcp-http --base-url https://jira.atlassian.com --allowed-project CLOUD -vv
@@ -26,7 +26,7 @@ $ jira-mcp-for-dev mcp-http --base-url https://jira.atlassian.com --allowed-proj
 2026-07-06T01:33:39.812158Z  WARN serve_inner: rmcp::service: response error id=4 error=ErrorData { code: ErrorCode(-32602), message: "Jira issue PROJ-123 is not allowed", data: None }
 ```
 
-### Terminaal 2: Goose AI
+### Terminal 2: Goose AI
 
 ```console
 $ goose configure

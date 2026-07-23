@@ -68,13 +68,16 @@ pub struct JiraArgs {
     )]
     pub allowed_projects: Vec<JiraIssueProject>,
 
-    /// Jira Base URL
+    /// Jira Base URL, e.g. "https://jira.atlassian.com".
+    ///
+    /// Defaults to localhost as a safety measure, so sensitive information
+    /// is not accidentally sent to an external Jira instance.
     #[arg(
         global = true,
         long,
         env = "JIRA_BASE_URL",
         value_name = "URL",
-        default_value = "https://jira.atlassian.com"
+        default_value = "http://localhost:8000"
     )]
     pub base_url: Url,
 
