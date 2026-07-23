@@ -17,16 +17,17 @@ use super::create_subtask::{
 use super::key::JiraIssueKey;
 
 #[derive(Debug, Deserialize, JsonSchema, Serialize)]
-pub(super) struct JiraUpdateSubtaskDescriptionInput {
-    /// Key of the subtask to update, e.g. PROJ-123. Must itself be a
-    /// subtask; the tool refuses to touch any other issue type.
+pub(super) struct JiraUpdateIssueDescriptionInput {
+    /// Key of the issue to update, e.g. PROJ-123. Must not be a subtask;
+    /// the tool refuses to touch any subtask (use
+    /// update_jira_subtask_description for those).
     key: JiraIssueKey,
-    /// One to two short paragraphs of narrative context: what this subtask
+    /// One to two short paragraphs of narrative context: what this issue
     /// delivers, why it's separate, what the current gap is, and what
     /// target state should be true after completion.
     narrative: String,
-    /// Given/When/Then scenarios, each independently verifiable. Recommended
-    /// to stay around 1-3 so the subtask remains verifiable in one sitting.
+    /// Given/When/Then scenarios, each independently verifiable. Larger
+    /// issues may reasonably need more than a subtask would.
     acceptance_criteria: Vec<JiraSubtaskAcceptanceCriterion>,
     /// Explicitly out-of-scope items. Populate only when the input
     /// explicitly defines exclusions, related work has blurry boundaries,
@@ -37,16 +38,16 @@ pub(super) struct JiraUpdateSubtaskDescriptionInput {
 }
 
 #[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
-#[display("Updated Jira subtask description: {key}")]
-pub struct JiraUpdateSubtaskDescriptionOutput {
+#[display("Updated Jira issue description: {key}")]
+pub struct JiraUpdateIssueDescriptionOutput {
     key: JiraIssueKey,
 }
 
-#[tool_router(router = update_subtask_description_tool_router, vis = "pub(super)")]
+#[tool_router(router = update_issue_description_tool_router, vis = "pub(super)")]
 impl JiraClient {
     #[tool(
-        name = "update_jira_subtask_description",
-        description = "Replace the description of an existing Jira subtask. Refuses to run on any issue type other than a subtask.",
+        name = "update_jira_issue_description",
+        description = "Replace the description of an existing Jira issue. Refuses to run on subtasks; use update_jira_subtask_description for those.",
         annotations(
             read_only_hint = false,
             destructive_hint = true,
@@ -54,33 +55,28 @@ impl JiraClient {
         ),
         execution(task_support = "optional")
     )]
-    async fn update_subtask_description(
+    async fn update_issue_description(
         &self,
-        Parameters(JiraUpdateSubtaskDescriptionInput {
+        Parameters(JiraUpdateIssueDescriptionInput {
             key,
             narrative,
             acceptance_criteria,
             out_of_scope,
-        }): Parameters<JiraUpdateSubtaskDescriptionInput>,
-    ) -> RmcpToolResult<Json<JiraUpdateSubtaskDescriptionOutput>> {
+        }): Parameters<JiraUpdateIssueDescriptionInput>,
+    ) -> RmcpToolResult<Json<JiraUpdateIssueDescriptionOutput>> {
         let issue = self
-            .update_subtask_description_in_jira(
-                &key,
-                &narrative,
-                &acceptance_criteria,
-                &out_of_scope,
-            )
+            .update_issue_description_in_jira(&key, &narrative, &acceptance_criteria, &out_of_scope)
             .await?;
         Ok(Json(issue))
     }
 
-    pub async fn update_subtask_description_in_jira(
+    pub async fn update_issue_description_in_jira(
         &self,
         key: &JiraIssueKey,
         narrative: &str,
         acceptance_criteria: &[JiraSubtaskAcceptanceCriterion],
         out_of_scope: &[String],
-    ) -> RmcpToolResult<JiraUpdateSubtaskDescriptionOutput> {
+    ) -> RmcpToolResult<JiraUpdateIssueDescriptionOutput> {
         if !key.is_allowed(&self.allowed_projects) {
             return Err(ErrorData::invalid_params(
                 format!("Jira issue {key} is not allowed"),
@@ -91,11 +87,10 @@ impl JiraClient {
         validate_description_input(narrative, acceptance_criteria)?;
 
         let issue = self.fetch_issue_from_jira(key, false).await?;
-        if !issue.fields.issuetype.subtask {
+        if issue.fields.issuetype.subtask {
             return Err(ErrorData::invalid_params(
                 format!(
-                    "Jira issue {key} is a {}, not a subtask; this tool only updates subtask descriptions",
-                    issue.fields.issuetype.name
+                    "Jira issue {key} is a subtask; this tool refuses to touch subtasks, use update_jira_subtask_description instead"
                 ),
                 None,
             ));
@@ -103,7 +98,7 @@ impl JiraClient {
 
         let description = render_description(narrative, acceptance_criteria, out_of_scope);
 
-        tracing::debug!("update jira subtask description: {key}");
+        tracing::debug!("update jira issue description: {key}");
         let url = self
             .base_url
             .join("rest/api/2/issue/")
@@ -144,8 +139,8 @@ impl JiraClient {
             ));
         }
 
-        tracing::info!("jira subtask description updated: {key}");
-        Ok(JiraUpdateSubtaskDescriptionOutput {
+        tracing::info!("jira issue description updated: {key}");
+        Ok(JiraUpdateIssueDescriptionOutput {
             key: key.to_owned(),
         })
     }

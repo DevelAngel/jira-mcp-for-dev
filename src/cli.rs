@@ -97,6 +97,23 @@ pub enum Command {
         #[arg(long)]
         out_of_scope: Vec<String>,
     },
+    /// Replaces the description of an existing non-subtask issue, bypassing
+    /// the MCP server. Refuses to run on subtasks.
+    UpdateIssueDescription {
+        /// Key of the issue to update, e.g. PROJ-123
+        key: JiraIssueKey,
+        /// Narrative context of the updated issue (one to two short
+        /// paragraphs)
+        narrative: String,
+        /// Acceptance criteria as a JSON array of
+        /// {"scenario": ..., "steps": ...} objects
+        #[arg(long, value_name = "JSON", value_parser = parse_json::<Vec<JiraSubtaskAcceptanceCriterion>>)]
+        acceptance_criteria: Vec<JiraSubtaskAcceptanceCriterion>,
+        /// An out-of-scope item; repeat the flag for multiple items,
+        /// e.g. --out-of-scope foo --out-of-scope bar
+        #[arg(long)]
+        out_of_scope: Vec<String>,
+    },
 }
 
 #[derive(Args, Clone, Debug)]

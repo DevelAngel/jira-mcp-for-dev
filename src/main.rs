@@ -86,6 +86,15 @@ async fn main() -> Result<()> {
             update_subtask_description(client, key, narrative, acceptance_criteria, out_of_scope)
                 .await
         }
+        Command::UpdateIssueDescription {
+            key,
+            narrative,
+            acceptance_criteria,
+            out_of_scope,
+        } => {
+            update_issue_description(client, key, narrative, acceptance_criteria, out_of_scope)
+                .await
+        }
     }?;
 
     Ok(())
@@ -190,5 +199,20 @@ async fn update_subtask_description(
         .await
         .with_context(|| format!("failed to update Jira subtask description for {}", key))?;
     println!("{subtask}");
+    Ok(())
+}
+
+async fn update_issue_description(
+    client: JiraClient,
+    key: JiraIssueKey,
+    narrative: String,
+    acceptance_criteria: Vec<JiraSubtaskAcceptanceCriterion>,
+    out_of_scope: Vec<String>,
+) -> Result<()> {
+    let issue = client
+        .update_issue_description_in_jira(&key, &narrative, &acceptance_criteria, &out_of_scope)
+        .await
+        .with_context(|| format!("failed to update Jira issue description for {}", key))?;
+    println!("{issue}");
     Ok(())
 }

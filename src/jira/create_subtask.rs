@@ -40,7 +40,8 @@ pub(super) struct JiraCreateSubtaskInput {
     /// delivers, why it's separate, what the current gap is, and what
     /// target state should be true after completion.
     narrative: String,
-    /// 1-3 Given/When/Then scenarios, each independently verifiable.
+    /// Given/When/Then scenarios, each independently verifiable. Recommended
+    /// to stay around 1-3 so the subtask remains verifiable in one sitting.
     acceptance_criteria: Vec<JiraSubtaskAcceptanceCriterion>,
     /// Explicitly out-of-scope items. Populate only when the input
     /// explicitly defines exclusions, related work has blurry boundaries,
@@ -62,22 +63,24 @@ pub struct JiraSubtaskAcceptanceCriterion {
 }
 
 /// Validate the narrative + acceptance criteria shared by every tool that
-/// writes a subtask description (create, update). Keeping this in one
-/// place ensures both tools reject the same malformed input the same way.
+/// writes an issue description (create, update). Keeping this in one place
+/// ensures every tool rejects the same malformed input the same way. Subtask
+/// tools recommend (in their docstring) staying small enough for one sitting;
+/// that's guidance for the LLM, not an enforced limit here.
 pub(super) fn validate_description_input(
     narrative: &str,
     acceptance_criteria: &[JiraSubtaskAcceptanceCriterion],
 ) -> RmcpToolResult<()> {
     if narrative.trim().is_empty() {
         return Err(ErrorData::invalid_params(
-            "Jira subtask narrative must not be empty",
+            "Jira issue narrative must not be empty",
             None,
         ));
     }
 
-    if acceptance_criteria.is_empty() || acceptance_criteria.len() > 3 {
+    if acceptance_criteria.is_empty() {
         return Err(ErrorData::invalid_params(
-            "Jira subtask must have between 1 and 3 acceptance criteria",
+            "Jira issue must have at least 1 acceptance criterion",
             None,
         ));
     }
@@ -85,7 +88,7 @@ pub(super) fn validate_description_input(
     for ac in acceptance_criteria {
         if ac.scenario.trim().is_empty() || ac.steps.trim().is_empty() {
             return Err(ErrorData::invalid_params(
-                "Jira subtask acceptance criteria must have non-empty scenario and steps",
+                "Jira issue acceptance criteria must have non-empty scenario and steps",
                 None,
             ));
         }
