@@ -13,6 +13,7 @@ use rmcp::transport;
 
 // streamable HTTP transport
 use axum::Router;
+use reqwest::Url;
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
@@ -45,7 +46,10 @@ async fn main() -> Result<()> {
 
     match cli.command.unwrap_or_default() {
         Command::McpIo => run_mcp_io_server(client).await,
-        Command::McpHttp { addr } => run_mcp_http_server(client, addr).await,
+        Command::McpHttp {
+            addr,
+            allowed_origins,
+        } => run_mcp_http_server(client, addr, &allowed_origins).await,
         Command::FetchIssue { key } => fetch_issue(client, key).await,
     }?;
 
@@ -59,14 +63,35 @@ async fn run_mcp_io_server(client: JiraClient) -> Result<()> {
     Ok(())
 }
 
-async fn run_mcp_http_server(client: JiraClient, addr: SocketAddr) -> Result<()> {
+async fn run_mcp_http_server(
+    client: JiraClient,
+    addr: SocketAddr,
+    allowed_origins: &[Url],
+) -> Result<()> {
     tracing::info!("Start streamable http server: {}", addr);
+    if allowed_origins.is_empty() {
+        tracing::warn!("No allowed origins");
+    } else {
+        let allowed_origins: Vec<_> = allowed_origins.iter().map(|url| url.to_string()).collect();
+        tracing::info!("Allowed origins: {}", allowed_origins.join(", "));
+    }
+    let allowed_hosts: Vec<_> = allowed_origins
+        .iter()
+        .map(|url| url.host_str().expect("url have no host"))
+        .collect();
+    if !allowed_hosts.is_empty() {
+        tracing::info!("Allowed hosts: {}", allowed_hosts.join(", "));
+    }
+
     let ct = CancellationToken::new();
 
     let service = StreamableHttpService::new(
         move || Ok(client.clone()),
         LocalSessionManager::default().into(),
-        StreamableHttpServerConfig::default().with_cancellation_token(ct.child_token()),
+        StreamableHttpServerConfig::default()
+            .with_allowed_origins(allowed_origins.into_iter().map(|url| url.to_string()))
+            .with_allowed_hosts(allowed_hosts)
+            .with_cancellation_token(ct.child_token()),
     );
 
     let router = Router::new()

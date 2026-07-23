@@ -38,6 +38,15 @@ pub enum Command {
             default_value = "127.0.0.1:8000"
         )]
         addr: SocketAddr,
+        /// Allowed Origins.
+        /// Can be repeated or comma-separated.
+        #[arg(
+            long = "allowed-origin",
+            env = "JIRA_ALLOWED_ORIGINS",
+            value_name = "BASE_URL",
+            value_delimiter = ','
+        )]
+        allowed_origins: Vec<Url>,
     },
     /// Downloads a Jira ticket directly, bypassing the MCP server
     FetchIssue {
