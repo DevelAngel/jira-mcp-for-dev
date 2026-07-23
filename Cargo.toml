@@ -1,6 +1,6 @@
 [package]
 name = "jira-mcp-for-dev"
-version = "0.6.5"
+version = "0.6.6"
 edition = "2024"
 description = "An MCP server to read Jira issues, for development use cases."
 categories = ["artificial-intelligence"]

@@ -1,11 +1,18 @@
-use crate::jira::{JiraIssueKey, JiraIssueProject};
+use crate::jira::{JiraIssueKey, JiraIssueProject, JiraSubtaskAcceptanceCriterion};
 
 use clap::{Args, Parser, Subcommand};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use reqwest::Url;
 use secrecy::SecretString;
+use serde::de::DeserializeOwned;
 
 use std::net::SocketAddr;
+
+/// Parses a CLI argument as JSON, so malformed input is rejected at parse
+/// time rather than later when building the request.
+fn parse_json<T: DeserializeOwned>(raw: &str) -> Result<T, String> {
+    serde_json::from_str(raw).map_err(|err| format!("invalid JSON: {err}"))
+}
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
@@ -56,6 +63,23 @@ pub enum Command {
         #[arg(long)]
         include_story_points: bool,
     },
+    /// Creates a subtask under a parent Jira issue, bypassing the MCP server
+    CreateSubtask {
+        /// Key of the parent Jira issue, e.g. PROJ-123
+        parent: JiraIssueKey,
+        /// Summary of the new subtask
+        summary: String,
+        /// Narrative context of the new subtask (one to two short paragraphs)
+        narrative: String,
+        /// Acceptance criteria as a JSON array of
+        /// {"scenario": ..., "steps": ...} objects
+        #[arg(long, value_name = "JSON", value_parser = parse_json::<Vec<JiraSubtaskAcceptanceCriterion>>)]
+        acceptance_criteria: Vec<JiraSubtaskAcceptanceCriterion>,
+        /// An out-of-scope item; repeat the flag for multiple items,
+        /// e.g. --out-of-scope foo --out-of-scope bar
+        #[arg(long)]
+        out_of_scope: Vec<String>,
+    },
 }
 
 #[derive(Args, Clone, Debug)]
@@ -99,6 +123,18 @@ pub struct JiraArgs {
         default_value = "customfield_10106"
     )]
     pub story_points_field: String,
+
+    /// Issue type name used when creating subtasks.
+    ///
+    /// Varies per Jira instance/locale, e.g. "Subtask" vs. "Sub-task".
+    #[arg(
+        global = true,
+        long = "subtask-issuetype",
+        env = "JIRA_SUBTASK_ISSUETYPE",
+        value_name = "ISSUETYPE_NAME",
+        default_value = "Sub-task"
+    )]
+    pub subtask_issuetype: String,
 }
 
 impl Default for Command {

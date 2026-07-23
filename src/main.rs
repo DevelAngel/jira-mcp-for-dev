@@ -2,7 +2,7 @@ mod cli;
 mod jira;
 
 use crate::cli::{Cli, Command};
-use crate::jira::{JiraClient, JiraIssueKey};
+use crate::jira::{JiraClient, JiraIssueKey, JiraSubtaskAcceptanceCriterion};
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -36,6 +36,7 @@ async fn main() -> Result<()> {
             .with_base_url(cli.jira.base_url)
             .with_allowed_projects(cli.jira.allowed_projects)
             .with_story_points_field(cli.jira.story_points_field)
+            .with_subtask_issuetype(cli.jira.subtask_issuetype)
             .with_api_token(api_token)
             .build()
     } else {
@@ -43,6 +44,7 @@ async fn main() -> Result<()> {
             .with_base_url(cli.jira.base_url)
             .with_allowed_projects(cli.jira.allowed_projects)
             .with_story_points_field(cli.jira.story_points_field)
+            .with_subtask_issuetype(cli.jira.subtask_issuetype)
             .build()
     };
 
@@ -56,6 +58,23 @@ async fn main() -> Result<()> {
             key,
             include_story_points,
         } => fetch_issue(client, key, include_story_points).await,
+        Command::CreateSubtask {
+            parent,
+            summary,
+            narrative,
+            acceptance_criteria,
+            out_of_scope,
+        } => {
+            create_subtask(
+                client,
+                parent,
+                summary,
+                narrative,
+                acceptance_criteria,
+                out_of_scope,
+            )
+            .await
+        }
     }?;
 
     Ok(())
@@ -123,5 +142,27 @@ async fn fetch_issue(
         .await
         .with_context(|| format!("failed to fetch Jira issue {}", key))?;
     println!("{issue}");
+    Ok(())
+}
+
+async fn create_subtask(
+    client: JiraClient,
+    parent: JiraIssueKey,
+    summary: String,
+    narrative: String,
+    acceptance_criteria: Vec<JiraSubtaskAcceptanceCriterion>,
+    out_of_scope: Vec<String>,
+) -> Result<()> {
+    let subtask = client
+        .create_subtask_in_jira(
+            &parent,
+            &summary,
+            &narrative,
+            &acceptance_criteria,
+            &out_of_scope,
+        )
+        .await
+        .with_context(|| format!("failed to create Jira subtask under {}", parent))?;
+    println!("{subtask}");
     Ok(())
 }
