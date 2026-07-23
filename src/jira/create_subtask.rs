@@ -61,6 +61,39 @@ pub struct JiraSubtaskAcceptanceCriterion {
     steps: String,
 }
 
+/// Validate the narrative + acceptance criteria shared by every tool that
+/// writes a subtask description (create, update). Keeping this in one
+/// place ensures both tools reject the same malformed input the same way.
+pub(super) fn validate_description_input(
+    narrative: &str,
+    acceptance_criteria: &[JiraSubtaskAcceptanceCriterion],
+) -> RmcpToolResult<()> {
+    if narrative.trim().is_empty() {
+        return Err(ErrorData::invalid_params(
+            "Jira subtask narrative must not be empty",
+            None,
+        ));
+    }
+
+    if acceptance_criteria.is_empty() || acceptance_criteria.len() > 3 {
+        return Err(ErrorData::invalid_params(
+            "Jira subtask must have between 1 and 3 acceptance criteria",
+            None,
+        ));
+    }
+
+    for ac in acceptance_criteria {
+        if ac.scenario.trim().is_empty() || ac.steps.trim().is_empty() {
+            return Err(ErrorData::invalid_params(
+                "Jira subtask acceptance criteria must have non-empty scenario and steps",
+                None,
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(Debug, Deserialize, Display, JsonSchema, Serialize)]
 #[display("Created Jira subtask: {key}")]
 pub struct JiraCreateSubtaskOutput {
@@ -151,28 +184,7 @@ impl JiraClient {
             ));
         }
 
-        if narrative.trim().is_empty() {
-            return Err(ErrorData::invalid_params(
-                "Jira subtask narrative must not be empty",
-                None,
-            ));
-        }
-
-        if acceptance_criteria.is_empty() || acceptance_criteria.len() > 3 {
-            return Err(ErrorData::invalid_params(
-                "Jira subtask must have between 1 and 3 acceptance criteria",
-                None,
-            ));
-        }
-
-        for ac in acceptance_criteria {
-            if ac.scenario.trim().is_empty() || ac.steps.trim().is_empty() {
-                return Err(ErrorData::invalid_params(
-                    "Jira subtask acceptance criteria must have non-empty scenario and steps",
-                    None,
-                ));
-            }
-        }
+        validate_description_input(narrative, acceptance_criteria)?;
 
         let description = render_description(narrative, acceptance_criteria, out_of_scope);
 

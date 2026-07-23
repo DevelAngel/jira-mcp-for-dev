@@ -2,12 +2,15 @@ mod create_subtask;
 mod fetch_issue;
 mod key;
 mod model;
+mod update_subtask_description;
 
 #[allow(unused_imports)]
 pub use create_subtask::{JiraCreateSubtaskOutput, JiraSubtaskAcceptanceCriterion};
 pub use key::{JiraIssueKey, JiraIssueProject};
 #[allow(unused_imports)]
 pub use model::JiraIssueOutput;
+#[allow(unused_imports)]
+pub use update_subtask_description::JiraUpdateSubtaskDescriptionOutput;
 
 use reqwest::{Client, Url};
 use rmcp::ErrorData;
@@ -127,7 +130,8 @@ impl JiraClientBuilder {
                 .expect("no subtask issuetype configured"),
             non_subtaskable_issuetypes: self.non_subtaskable_issuetypes,
             tool_router: JiraClient::fetch_issue_tool_router()
-                + JiraClient::create_subtask_tool_router(),
+                + JiraClient::create_subtask_tool_router()
+                + JiraClient::update_subtask_description_tool_router(),
             prompt_router: JiraClient::create_subtask_prompt_router(),
         }
     }

@@ -77,6 +77,15 @@ async fn main() -> Result<()> {
             )
             .await
         }
+        Command::UpdateSubtaskDescription {
+            key,
+            narrative,
+            acceptance_criteria,
+            out_of_scope,
+        } => {
+            update_subtask_description(client, key, narrative, acceptance_criteria, out_of_scope)
+                .await
+        }
     }?;
 
     Ok(())
@@ -165,6 +174,21 @@ async fn create_subtask(
         )
         .await
         .with_context(|| format!("failed to create Jira subtask under {}", parent))?;
+    println!("{subtask}");
+    Ok(())
+}
+
+async fn update_subtask_description(
+    client: JiraClient,
+    key: JiraIssueKey,
+    narrative: String,
+    acceptance_criteria: Vec<JiraSubtaskAcceptanceCriterion>,
+    out_of_scope: Vec<String>,
+) -> Result<()> {
+    let subtask = client
+        .update_subtask_description_in_jira(&key, &narrative, &acceptance_criteria, &out_of_scope)
+        .await
+        .with_context(|| format!("failed to update Jira subtask description for {}", key))?;
     println!("{subtask}");
     Ok(())
 }
